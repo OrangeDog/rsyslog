@@ -2508,6 +2508,24 @@ AM_CONDITIONAL(ENABLE_OMMONGODB, test x$enable_ommongodb = xyes)
 # end of mongodb code
 
 
+# BEGIN IMDTLS INPUT SUPPORT
+AC_ARG_ENABLE(imdtls,
+        [AS_HELP_STRING([--enable-imdtls],[Compiles DTLS syslog input module @<:@default=no@:>@])],
+        [case "${enableval}" in
+         yes) enable_imdtls="yes" ;;
+          no) enable_imdtls="no" ;;
+         optional) enable_imdtls="optional" ;;
+           *) AC_MSG_ERROR(bad value ${enableval} for --enable-imdtls) ;;
+         esac],
+        [enable_imdtls=no]
+)
+if test "x$enable_imdtls" = "xyes"; then
+	PKG_CHECK_MODULES(OPENSSL, openssl)
+fi
+AM_CONDITIONAL(ENABLE_IMDTLS, test x$enable_imdtls = xyes)
+# END IMDTLS INPUT
+
+
 # BEGIN CZMQ INPUT SUPPORT
 AC_ARG_ENABLE(imczmq,
         [AS_HELP_STRING([--enable-imczmq],[Compiles imczmq output module @<:@default=no@:>@])],
@@ -2522,7 +2540,6 @@ if test "x$enable_imczmq" = "xyes"; then
 	PKG_CHECK_MODULES(CZMQ, libczmq >= 4.0.0)
 fi
 AM_CONDITIONAL(ENABLE_IMCZMQ, test x$enable_imczmq = xyes)
-
 # END CZMQ INPUT
 
 
@@ -2880,6 +2897,7 @@ AC_CONFIG_FILES([Makefile \
 		plugins/pmlastmsg/Makefile \
 		plugins/mmdblookup/Makefile \
 		plugins/omazureeventhubs/Makefile \
+		plugins/imdtls/Makefile \
 		contrib/mmdarwin/Makefile \
 		contrib/omhttp/Makefile \
 		contrib/fmhash/Makefile \
@@ -2946,6 +2964,7 @@ echo "    Klog functionality enabled:               $enable_klog ($os_type)"
 fi
 echo "    /dev/kmsg functionality enabled:          $enable_kmsg"
 echo "    plain tcp input module enabled:           $enable_imptcp"
+echo "    DTLS udp input module enabled:            $enable_imdtls"
 echo "    imdiag enabled:                           $enable_imdiag"
 echo "    file input module enabled:                $enable_imfile"
 echo "    docker log input module enabled:          $enable_imdocker"

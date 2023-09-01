@@ -33,12 +33,6 @@ typedef enum {
 	osslRtry_recv = 2
 } osslRtryCall_t;		/**< IDs of calls that needs to be retried */
 
-typedef enum {
-	osslServer = 0,		/**< Server SSL Object */
-	osslClient = 1		/**< Client SSL Object */
-} osslSslState_t;
-
-
 typedef nsd_if_t nsd_ossl_if_t; /* we just *implement* this interface */
 
 /* the nsd_ossl object */
@@ -49,22 +43,8 @@ struct nsd_ossl_s {
 					authenticate peer if no other name given */
 	int iMode;		/* 0 - plain tcp, 1 - TLS */
 	int bAbortConn;		/* if set, abort conncection (fatal error had happened) */
-	const uchar *pszCAFile;
-	const uchar *pszCRLFile;
-	const uchar *pszExtraCAFiles;
-	const uchar *pszKeyFile;
-	const uchar *pszCertFile;
-	enum {
-		OSSL_AUTH_CERTNAME = 0,
-		OSSL_AUTH_CERTFINGERPRINT = 1,
-		OSSL_AUTH_CERTVALID = 2,
-		OSSL_AUTH_CERTANON = 3
-	} authMode;
-	enum {
-		OSSL_EXPIRED_PERMIT = 0,
-		OSSL_EXPIRED_DENY = 1,
-		OSSL_EXPIRED_WARN = 2
-	} permitExpiredCerts;
+	AuthMode authMode;
+	PermitExpiredCerts permitExpiredCerts;
 	osslRtryCall_t rtryCall;/**< what must we retry? */
 	int rtryOsslErr;	/**< store ssl error code into like SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE */
 	int bIsInitiator;	/**< 0 if socket is the server end (listener), 1 if it is the initiator */
@@ -85,13 +65,8 @@ struct nsd_ossl_s {
 	/**< -1: empty, 0: connection closed, 1..NSD_OSSL_MAX_RCVBUF-1: data of that size present */
 	int ptrRcvBuf;		/**< offset for next recv operation if 0 < lenRcvBuf < NSD_OSSL_MAX_RCVBUF */
 
-	/* Open SSL objects */
-//	BIO *acc;		/* OpenSSL main BIO obj */
-	int bAnonInit; // TODO: do we really need this? rger, 2021-07-07
-	int ctx_is_copy;
-	SSL_CTX *ctx;		/* credentials, ciphers, ... */
-	SSL *ssl;		/* OpenSSL main SSL obj */
-	osslSslState_t sslState;/**< what must we retry? */
+	/* OpenSSL and Config Cert vars inside net_ossl_t now */
+	net_ossl_t *pNetOssl;	/* OSSL shared Config and object vars are here */
 };
 
 /* interface is defined in nsd.h, we just implement it! */
@@ -105,39 +80,7 @@ uchar *osslStrerror(int error);
 rsRetVal osslChkPeerAuth(nsd_ossl_t *pThis);
 rsRetVal osslRecordRecv(nsd_ossl_t *pThis);
 rsRetVal osslHandshakeCheck(nsd_ossl_t *pNsd);
-
-/* some more prototypes to avoid warnings ... */
-void osslLastSSLErrorMsg(int ret, SSL *ssl, int severity, const char* pszCallSource, const char* pszOsslApi);
-int verify_callback(int status, X509_STORE_CTX *store);
 rsRetVal osslPostHandshakeCheck(nsd_ossl_t *pNsd);
-
-int opensslh_THREAD_setup(void);
-int opensslh_THREAD_cleanup(void);
-
-/*-----------------------------------------------------------------------------*/
-#define MUTEX_TYPE       pthread_mutex_t
-#define MUTEX_SETUP(x)   pthread_mutex_init(&(x), NULL)
-#define MUTEX_CLEANUP(x) pthread_mutex_destroy(&(x))
-#define MUTEX_LOCK(x)    pthread_mutex_lock(&(x))
-#define MUTEX_UNLOCK(x)  pthread_mutex_unlock(&(x))
-#define THREAD_ID        pthread_self()
-
-/* This array will store all of the mutexes available to OpenSSL. */
-struct CRYPTO_dynlock_value
-{
-	MUTEX_TYPE mutex;
-};
-
-void dyn_destroy_function(struct CRYPTO_dynlock_value *l,
-	__attribute__((unused)) const char *file, __attribute__((unused)) int line);
-void dyn_lock_function(int mode, struct CRYPTO_dynlock_value *l,
-	__attribute__((unused)) const char *file, __attribute__((unused)) int line);
-struct CRYPTO_dynlock_value * dyn_create_function(
-	__attribute__((unused)) const char *file, __attribute__((unused)) int line);
-unsigned long id_function(void);
-void locking_function(int mode, int n,
-	__attribute__((unused)) const char * file, __attribute__((unused)) int line);
-/*-----------------------------------------------------------------------------*/
 
 /* the name of our library binary */
 #define LM_NSD_OSSL_FILENAME "lmnsd_ossl"
